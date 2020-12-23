@@ -5,6 +5,8 @@ import time
 import re
 import datetime
 import sqlite3
+import plotly.express as px
+
 
 def getStapiCharData():
 
@@ -70,22 +72,24 @@ def load_usa_names(path, firstfilename):
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS USA_Names(
-            year INT,
-            name VARCHAR(20),
-            gender VARCHAR(6),
-            count INT)
+            year INT, --Year of Birth
+            name VARCHAR(20), --Name given
+            gender VARCHAR(6), --Gender
+            counts INT, --How many that year
+            UNIQUE(year, name, gender, counts)) --Unique identifier to avoid duplicates
         ''')
 
     while fileyear <= datetime.datetime.now().year:
         try:
             with open(path + filename + str(fileyear) +".txt") as fh:
-                    for line in fh: # Go though file line by line (e.g. Mary,F,7065)
-                        ls = line.split(",")
+                for line in fh: # Go though file line by line (e.g. Mary,F,7065)
+                    ls = line.split(",")
+                    if len(ls) > 1:
 
                         n_year = fileyear
-                        n_name = ls[0]
-                        n_gender = ls[1]
-                        n_count = ls[2]
+                        n_name = ls[0].strip()
+                        n_gender = ls[1].strip()
+                        n_counts = ls[2].strip()
 
                         if n_gender == 'F': n_gender = 'Female'
                         else:
@@ -93,19 +97,48 @@ def load_usa_names(path, firstfilename):
                             else: n_gender = None
 
                         cur.execute('''INSERT OR IGNORE INTO USA_Names
-                            (year, name, gender, count)
+                            (year, name, gender, counts)
                             VALUES ( ?, ?, ?, ?)''',
-                            ( n_year, n_name, n_gender, n_count) )
+                            (n_year, n_name, n_gender, n_counts) )
             conn.commit()
             fileyear += 1
+
         except FileNotFoundError:
             break
+
+def interact_with_db():
+    conn = sqlite3.connect('BD_Project.sqlite')
+    cur = conn.cursor()
+    while 1:
+        command = input("SQL Command:\n")
+        if command == "":
+            continue
+        else:
+            if command.startswith("SELECT"):
+                cur.execute(command)
+                x=cur.fetchall()
+            else:
+                if command == "x":
+                    break
+                else:
+                    cur.execute(command)
+                    con.commit()
+        i=0
+        while i<len(x):
+            print(x[i])
+            i+=1
 
 
 f_path = 'D:\\Drive\\OTH\\Big Data Analytics\\Projekt\\Namen\\USA\\'
 f_name = 'yob1880'
 
 load_usa_names(f_path, f_name)
+interact_with_db()
+
+
+
+
+# SELECT * FROM USA_Names WHERE name='Paul' ORDER BY counts DESC;
 
 # raw_data = getStapiCharData()
 # filterStapiCharData(raw_data)
