@@ -6,14 +6,9 @@ import datetime
 
 apiurl = 'http://www.omdbapi.com/?apikey=615a386c&'
 
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
-
-
 def get_search_type():
     parms = dict()
-    inp = input("Choose by what you've got:\n1: i - IMDb ID\n2: t - Exact title\n3: s - approximate title(general search)\n").strip(",.- ")
+    inp = input("Choose by what you've got:\n  i - IMDb ID\n  t - Exact title\n  s - approximate title(general search)\n").strip(",.- ")
     while 1:
         if inp == "i" or inp == "I":
             parms['i']=input("Enter your IMDb ID:\n").strip(",.- ")
@@ -28,7 +23,7 @@ def get_search_type():
             inp = try_again()
 
     if (parms.get('s',None)!= None) or (parms.get('t',None)!= None):
-        inp = input("Choose:\n1: s - series\n2: m - movie\n3: e - episode\n").strip(",.- ")
+        inp = input("Choose:\n  s - series\n  m - movie\n  e - episode\n").strip(",.- ")
         while 1:
             if inp == "s" or inp == "S":
                 parms['type']="series"
@@ -71,6 +66,10 @@ def get_search_type():
 
 
 def get_api_data(parms):
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
     url = apiurl + urllib.parse.urlencode(parms)
 
     print('Retrieving', url, "\n")
@@ -92,9 +91,12 @@ def get_api_data(parms):
 
 
 def display_api_data(js,parms):
+
     if (parms.get('s', None)!= None) and (js['Response'] == True):
+        display_page(js, parms)
         i=0
         while i<len(js['Search']):
+            print(str(i+1) + ")")
             print("Title:", js['Search'][i]["Title"])
             print("Year:", js['Search'][i]["Year"])
             print("imdbID:", js['Search'][i]["imdbID"])
@@ -128,53 +130,76 @@ def display_api_data(js,parms):
 
 
 def nav_api_search(js, parms):
-    current_page = parms['page']
-    total_pages = math.ceil(float(js['totalResults'])/float(len(js['Search'])))
-    print("You are at page", current_page, "of", total_pages)
-    inp = input("Choose:\n1.  n  Next page\n2.  p  Previous page\n3.  c  Choose item\n").strip(",.- ")
+    display_page(js, parms)
+    current_page, total_pages = get_pages(js, parms)
+
+    inp = input("Enter:\n  n - Next page\n  p - Previous page\n  g - Go to custom page number\n  c - Choose item\n").strip(",.- ")
 
     while 1:
         if inp == "n" or inp == "N":
             if current_page < total_pages:
                 parms['page'] +=1
+                break
             else:
-                try_again()
+                inp = try_again("On last page already.")
                 continue
-            break
 
         elif inp == "p" or inp == "P":
             if current_page > 1:
                 parms['page'] -= 1
+                break
             else:
-                try_again()
+                inp = try_again("On first page already.")
                 continue
-            break
 
-        elif inp == "c" or inp == "C":
-            inp = input("Which of the affore printed items? (1,2,3,...)\n").strip(",.- ")
+        elif inp == "g" or inp == "G":
+            display_page(js, parms)
+            inp = input("Enter the page you would like to go to. (1,2,3,...)\n").strip(",. ")
             while 1:
                 try:
                     inp = int(inp)
                 except:
-                    print("except")
+                    inp = try_again("Numbers only.")
+                    continue
+                if inp >= 1 and inp <= total_pages:
+                    parms['page']= inp
+                    break
+                else:
                     inp = try_again()
+                    continue
+            break
+
+
+        elif inp == "c" or inp == "C":
+            inp = input("Which of the affore printed items? (1,2,3,...)\n").strip(",. ")
+            while 1:
+                try:
+                    inp = int(inp)
+                except:
+                    inp = try_again("Numbers only.")
                     continue
                 if inp > 0 and inp <= len(js['Search']):
                     parms = dict()
                     parms['i']=js['Search'][inp-1]['imdbID']
-                    return parms
+                    parms['plot']='full'
+                    break
                 else:
-                    print("else1")
                     inp = try_again()
                     continue
+            break
+
         else:
-            print("else2")
             inp = try_again()
             continue
+
     return parms
 
-def try_again():
-    return input("Try again...\n").strip(",.- ")
+def try_again(warning=None):
+    if warning != None:
+        warning += " Try again.\n"
+    else: warning = "Try again.\n"
+
+    return input(warning).strip(",. ")
 
 def get_rotten_tomatoes(js):
     i=0
@@ -183,6 +208,51 @@ def get_rotten_tomatoes(js):
             if rating['Source'] == "Rotten Tomatoes":
                 return rating['Value']
     else: return None
+
+def display_page(js, parms):
+    current_page, total_pages = get_pages(js, parms)
+    print("You are at page", current_page, "of", total_pages)
+
+def get_pages(js, parms):
+    if parms.get('page', None) != None:
+        current_page = parms['page']
+    else: current_page = -1
+
+    if js.get('totalResults', None) != None:
+        total_pages = math.ceil(float(js['totalResults'])/10.0)
+    else: total_pages = -1
+
+    return current_page, total_pages
+#############################
+#Ab hier neue Logik
+def save_title():
+    pass
+    # print Seite speichern oder neue Suche?
+    # Aussuchen von navigation aus anstoßen?
+    # Brauche: Aktuell angezeigter Titel, der dann in db gespeichert werden soll
+    # Übergabe von js und parms? Sodass ich frage, ob in parms ein i ist und dann diese Funktion in display_page aufrufen bei Darstellung
+
+def write_to_db(names, movie_ID): #a_name is a list of names
+
+    conn = sqlite3.connect('BD_Project.sqlite')
+    cur = conn.cursor()
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS Selected_Actors(
+            id INT AUTOINCREMENT
+            name VARCHAR(20), --Actors Name
+            movie_ID VARCHAR(20), --imdbID
+            UNIQUE(name, movie_ID)) --Unique identifier to avoid duplicates
+        ''')
+
+    for name in names:
+        cur.execute('''INSERT OR IGNORE INTO Selected_Actors
+            (name, movie_ID)
+            VALUES ( ?, ?)''',
+            (name.strip(), movie_ID) )
+
+
+'''XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'''
 
 nav_flag = False
 while 1:
@@ -201,8 +271,13 @@ while 1:
     if check != True:
         continue
 
+    #Hier kommt noch neue Logik
+    check = select_title()
+    if check == True:
+        if (parms.get('i', None) != None) and (parms.get('NEUER PARAMETER', None)!= None):
+    ##############################
 
-    if (parms.get('s', None)!= None) and (json_data['Response'] == True):
+    if (parms.get('s', None) != None) and (json_data['Response'] == True):
         nav_flag = True
     else:
         nav_flag = False
