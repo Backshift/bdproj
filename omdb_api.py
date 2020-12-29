@@ -3,6 +3,8 @@ import json
 import ssl
 import math
 import datetime
+import sqlite3
+import time
 
 apiurl = 'http://www.omdbapi.com/?apikey=615a386c&'
 
@@ -22,8 +24,8 @@ def get_search_type():
         else:
             inp = try_again()
 
-    if (parms.get('s',None)!= None) or (parms.get('t',None)!= None):
-        inp = input("Choose:\n  s - series\n  m - movie\n  e - episode\n").strip(",.- ")
+    if parms.get('s')!= None:
+        inp = input("Choose:\n  s - series\n  m - movie\n").strip(",.- ")
         while 1:
             if inp == "s" or inp == "S":
                 parms['type']="series"
@@ -31,13 +33,9 @@ def get_search_type():
             elif inp == "m" or inp == "M":
                 parms['type']="movie"
                 break
-            elif inp == "e" or inp == "E":
-                parms['type']="episode"
-                break
             else:
                 inp = try_again()
 
-    if (parms.get('s',None)!= None) or (parms.get('t',None)!= None):
         inp = str(input("Year of release, Format like 1974:\n(Enter  n  for no year)\n")).strip(",.- ")
         while 1:
             if inp == "n" or inp == "N":
@@ -55,10 +53,10 @@ def get_search_type():
                 inp = try_again()
 
 
-    if (parms.get('i',None)!= None) or (parms.get('t',None)!= None):
+    if (parms.get('i')!= None) or (parms.get('t')!= None):
         parms['plot']='full'
 
-    if parms.get('s',None)!= None:
+    if parms.get('s')!= None:
         parms['page']= 1
 
     return parms
@@ -72,27 +70,25 @@ def get_api_data(parms):
 
     url = apiurl + urllib.parse.urlencode(parms)
 
-    print('Retrieving', url, "\n")
+    print("Retrieving...\n")
     uh = urllib.request.urlopen(url, context=ctx)
     data = uh.read().decode()
 
     try:
         js = json.loads(data)
-        if js['Response'] == "True":
+        if js.get('Response') == "True":
             js['Response'] = True
         return js
     except:
-        js = None
+        js = dict
         print("Failed to retrieve Information. See below.")
         print(data, "\n")
-        return None
-
+        return js
 
 
 
 def display_api_data(js,parms):
-
-    if (parms.get('s', None)!= None) and (js['Response'] == True):
+    if (parms.get('s')!= None) and (js.get('Response') == True):
         display_page(js, parms)
         i=0
         while i<len(js['Search']):
@@ -101,11 +97,11 @@ def display_api_data(js,parms):
             print("Year:", js['Search'][i]["Year"])
             print("imdbID:", js['Search'][i]["imdbID"])
             print("Type:", js['Search'][i]["Type"])
-            print("Poster:", js['Search'][i]["Poster"])
+            #print("Poster:", js['Search'][i]["Poster"])
             print("\n")
             i+=1
         return True
-    elif ((parms.get('i',None)!= None) or (parms.get('t',None)!= None)) and (js['Response'] == True):
+    elif ((parms.get('i')!= None) or (parms.get('t')!= None)) and (js.get('Response') == True):
         print("Title:", js["Title"])
         print("Year:", js["Year"])
         print("Rated:", js["Rated"])
@@ -119,13 +115,14 @@ def display_api_data(js,parms):
         print("Language:", js["Language"])
         print("Country:", js["Country"])
         print("Awards:", js["Awards"])
-        print("Poster:", js["Poster"])
+        #print("Poster:", js["Poster"])
         print("imdbID:", js["imdbID"])
         print("Type:", js["Type"])
-        print("\n")
         return True
     else:
-        print("Failed to display. Exiting\n")
+        print("\nIncorrect Data recieved.\n")
+        print(js)
+        print("\nExiting...")
         return False
 
 
@@ -214,70 +211,194 @@ def display_page(js, parms):
     print("You are at page", current_page, "of", total_pages)
 
 def get_pages(js, parms):
-    if parms.get('page', None) != None:
+    if parms.get('page') != None:
         current_page = parms['page']
     else: current_page = -1
 
-    if js.get('totalResults', None) != None:
+    if js.get('totalResults') != None:
         total_pages = math.ceil(float(js['totalResults'])/10.0)
     else: total_pages = -1
 
     return current_page, total_pages
-#############################
-#Ab hier neue Logik
-def save_title():
-    pass
-    # print Seite speichern oder neue Suche?
-    # Aussuchen von navigation aus anstoßen?
-    # Brauche: Aktuell angezeigter Titel, der dann in db gespeichert werden soll
-    # Übergabe von js und parms? Sodass ich frage, ob in parms ein i ist und dann diese Funktion in display_page aufrufen bei Darstellung
 
-def write_to_db(names, movie_ID): #a_name is a list of names
+def prompt_save_title(js, parms, parms_old):
+    prompt = ("Would you like to save the cast of this " + js["Type"] + " to the database?\nEnter:\n  y - yes\n  n - no\n")
+    inp = input(prompt).strip(",. ")
+    while 1:
+        if inp == "y" or inp == "Y":
+            write_to_db(js['Actors'], js['imdbID'])
+            break
+        elif inp == "n" or inp == "N":
+            break
+        else:
+            inp = try_again()
+            continue
+    if parms_old.get('s') != None:
+        inp = input("Enter:\n  b - back to old search\n  c - create new search\n")
+        while 1:
+            if inp == "b" or inp == "B":
+                return parms_old
+            elif inp == "c" or inp == "C":
+                return dict()
+            else:
+                inp = try_again()
+    else: return dict()
+
+def write_to_db(names, movie_ID):
 
     conn = sqlite3.connect('BD_Project.sqlite')
     cur = conn.cursor()
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS Selected_Actors(
-            id INT AUTOINCREMENT
             name VARCHAR(20), --Actors Name
             movie_ID VARCHAR(20), --imdbID
             UNIQUE(name, movie_ID)) --Unique identifier to avoid duplicates
         ''')
 
+    names = names.split(",")
     for name in names:
         cur.execute('''INSERT OR IGNORE INTO Selected_Actors
             (name, movie_ID)
             VALUES ( ?, ?)''',
-            (name.strip(), movie_ID) )
+            (name.strip(",. "), movie_ID) )
+        conn.commit()
 
+def prompt_enter_episode(js, parms):
+    inp = input("Would you like to enter a specific episode of this series?\n  y - yes\n  n - no\n").strip(",.- ")
+    while 1:
+        if inp == "y" or inp == "Y":
+            inp = input("Which specific season is this episode in?\n").strip(",.- ")
+            while 1:
+                try:
+                    inp = int(inp)
+                except:
+                    inp = try_again("Enter numbers only.")
+                    continue
+                if inp >=1 and inp <= int(js.get('totalSeasons')):
+                    parms['Season'] = inp
+                    print("Parms nach Seasonaddon", parms)
+                    break
+                else:
+                    inp = try_again()
+            js = get_api_data(parms)
+            if js.get('Response') == True:
+                prompt = "Which episode of season " + str(parms['Season']) + " would you like to access?\n"
+                inp = input(prompt)
+                while 1:
+                    try:
+                        inp = int(inp)
+                    except:
+                        inp = try_again("Enter numbers only.")
+                        continue
+                    if inp >=1 and inp <= len(js.get('Episodes')):
+                        print("Episoden", str(len(js.get('Episodes')))) '''XXXXXXXXXXXXXXXXXXXXXXXXXXXHier stimmt was nicht. Nicht genug episoden bzw len gibt 17 statt 21XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'''
+                        parms['Episode'] = inp
+
+                        return parms
+                        print("Parms nach return?", parms)
+                    else:
+                        inp = try_again()
+            else:
+                print("Failed to retrieve. Try again")
+                continue
+            break
+
+        elif inp == "n" or inp == "N":
+            return parms
+        else:
+            inp = try_again()
+            continue
 
 '''XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'''
 
 nav_flag = False
+parms_old = dict()
+parms = dict()
+js = dict()
+js['Response'] = True
 while 1:
-    if nav_flag == False:
+    if (((parms == dict()) or (parms.get('i') != None) or (parms.get('t') != None)) and js.get('Response') == True):
+        parms_old = parms
         parms = get_search_type()
-    else:
-        if parms.get('s', None)!= None:
-            parms = nav_api_search(json_data, parms)
 
+    print("Sleeping")
+    time.sleep(2)
+    js_old = js
+    js = get_api_data(parms)
 
-    json_data = get_api_data(parms)
-    if json_data == None:
-        continue
-
-    check = display_api_data(json_data,parms)
+    check = display_api_data(js,parms)
     if check != True:
+        parms = dict()
+        js['Response'] = True
         continue
 
-    #Hier kommt noch neue Logik
-    check = select_title()
-    if check == True:
-        if (parms.get('i', None) != None) and (parms.get('NEUER PARAMETER', None)!= None):
-    ##############################
+    if (parms.get('s') != None) and (js.get('Response') == True):
+        parms_old = parms
+        parms = nav_api_search(js,parms)
+        js = dict()
+        continue
 
-    if (parms.get('s', None) != None) and (json_data['Response'] == True):
-        nav_flag = True
+    if ((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Type') == "series") and (js.get('Response') == True):
+        parms_old = parms
+        print("Parms_old", parms_old)
+        print("Parms", parms)
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        parms = prompt_enter_episode(js,parms) '''XXXXXXXXXXXDer Dreck ändert einfach parms_old. Ich fasse parms_old nicht mal in der Funktion selbst anXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'''
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        print("Parms_old", parms_old)
+        print("Parms", parms)
+
+        if parms != parms_old:
+            js = dict()
+            continue
+
+    if (((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Response') == True)):
+        if js_old.get('Type') == 'series' and js.get('Type') == 'episode' and parms == parms_old:
+            js['imdbID'] = js_old.get('imdbID')
+        parms = prompt_save_title(js,parms,parms_old)
+        if parms == parms_old:
+            js = dict()
+            js['Response'] = True
+
+
+
+
+
+
+
+
+
+
+    '''if parms = parms_old:
+            if parms.get('s') != None:
+                continue
     else:
-        nav_flag = False
+        continue'''
+
+
+    '''parms_old = parms
+    if (parms.get('s') != None) and (js.get('Response') == True):
+        parms = nav_api_search(js,parms)
+    else:
+        parms = get_search_type()
+    while 1:
+        js = get_api_data(parms)
+        if js == None:
+            break
+
+        check = display_api_data(js,parms)
+        if check != True:
+            break
+
+        if ((parms.get('i')!= None) or (parms.get('t') != None)) and (js.get('Response') == True):
+            parms = prompt_save_title(js,parms,parms_old)
+            if parms == parms_old:
+                js = get_api_data(parms)
+                if js == None:
+                    break
+
+                check = display_api_data(js,parms)
+                if check != True:
+                    break
+            break'''
