@@ -121,11 +121,10 @@ def load_imdb_register(i_path, i_name):
             print("Failed to read tsv into pandas dataframe")
             exit()
 
-            #progressbar.ProgressBar(widgets=[progressbar.SimpleProgress()],max_value=17,).start()
-
     print("\nCreating instructions")
     if core_count > 2:
-        data_frames = np.array_split(df, core_count-1)
+        core_count2 = core_count*core_count
+        data_frames = np.array_split(df, core_count2)
         cmds_ls = Parallel(n_jobs=core_count-1)(delayed(gen_imdb_sql_data)(frame) for frame in progressbar.progressbar(data_frames))
         del data_frames
         print("\nMerging instructions")
@@ -151,7 +150,7 @@ def load_imdb_register(i_path, i_name):
         cur.execute(cmd['command'], (cmd['act_id'], cmd['act_name']))
     con.commit()
     con.close()
-    print("\nSuccessfully imported dataset ImdB_Names\n")
+    print("\nSuccessfully imported dataset ImdB_Names\n\n\n\n")
 
 def interact_with_db():
     con = sqlite3.connect('BD_Project.sqlite')
@@ -188,6 +187,6 @@ if __name__ == '__main__':
     i_name = 'data.tsv'
 
 
-    load_usa_names(usa_path, usa_name)
+    #load_usa_names(usa_path, usa_name)
     load_imdb_register(i_path, i_name)
     interact_with_db()
