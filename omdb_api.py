@@ -239,10 +239,20 @@ def prompt_save_title(js, parms, parms_old):
             inp = try_again()
             continue
 
+    while 1:
+        inp = input("Any Actor you would like to add?\nEnter n for no\n").strip(",. ")
+        if inp == "n":
+            break
+        else:
+            if js['Type'] == "episode":
+                js_episode = js
+                js_series = get_api_data(parms_old)
+                write_to_db(inp, js_series['Title'], js_series['imdbID'])
+            else: write_to_db(inp, js['Title'], js['imdbID'])
+
     inp = input("Enter:\n  b - go back\n  c - create new search\n")
     while 1:
         if inp == "b" or inp == "B":
-            print(parms_old)
             return parms_old
         elif inp == "c" or inp == "C":
             return dict()
@@ -260,7 +270,8 @@ def write_to_db(names, title, imdbid):
             name VARCHAR(20), --Actors Name
             title VARCHAR(50), --Title of content (e.g. "Star Trek: The Next Generation")
             imdbid VARCHAR(20), --imdbID
-            UNIQUE(name, title)) --Unique identifier to avoid duplicates
+            character VARCHAR(20), --Name of played character
+            UNIQUE(name, title)); --Unique identifier to avoid duplicates
         ''')
 
     names = names.split(",")
@@ -325,7 +336,6 @@ while 1:
         parms_old = dict(parms)
         parms = get_search_type()
 
-    print("Sleeping")
     time.sleep(2)
     js_old = dict(js)
     js = get_api_data(parms)
