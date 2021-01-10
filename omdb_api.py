@@ -1,16 +1,8 @@
-import urllib.request, urllib.parse, urllib.error
-import json
-import ssl
-import math
-import datetime
-import sqlite3
-import time
-
 apiurl = 'http://www.omdbapi.com/?apikey=615a386c&'
 
 def get_search_type():
     parms = dict()
-    inp = input("Choose by what you've got:\n  i - IMDb ID\n  t - Exact title\n  s - approximate title(general search)\n").strip(",.- ")
+    inp = input("Choose by what you've got:\n  i - IMDb ID\n  t - Exact title\n  s - approximate title(general search)\n  x - exit\n").strip(",.- ")
     while 1:
         if inp == "i" or inp == "I":
             parms['i']=input("Enter your IMDb ID:\n").strip(",.- ")
@@ -21,6 +13,8 @@ def get_search_type():
         elif inp == "s" or inp == "S":
             parms['s']=input("Enter your title to search for:\n").strip(",.- ")
             break
+        elif inp == "x" or inp == "X":
+            exit()
         else:
             inp = try_again()
 
@@ -70,7 +64,6 @@ def get_api_data(parms):
 
     url = apiurl + urllib.parse.urlencode(parms)
 
-    print("Retrieving...\n")
     uh = urllib.request.urlopen(url, context=ctx)
     data = uh.read().decode()
 
@@ -230,8 +223,9 @@ def prompt_save_title(js, parms, parms_old):
             if js['Type'] == "episode":
                 js_episode = js
                 js_series = get_api_data(parms_old)
-                write_to_db(js_episode['Actors'], js_series['Title'], js_series['imdbID'])
-            else: write_to_db(js['Actors'], js['Title'], js['imdbID'])
+                year = re.findall('[0-9]+', js_series['Year'])[0] #Nur das erste Jahr (Beginn)
+                write_to_db(js_episode['Actors'], js_series['Title'], js_series['imdbID'], year)
+            else: write_to_db(js['Actors'], js['Title'], js['imdbID'], js['Year'])
             break
         elif inp == "n" or inp == "N":
             break
@@ -240,46 +234,45 @@ def prompt_save_title(js, parms, parms_old):
             continue
 
     while 1:
-        inp = input("Any Actor you would like to add?\nEnter n for no\n").strip(",. ")
-        if inp == "n":
+        inp = input("Any Actor you would like to add?\nEnter n for none\n").strip(",. ")
+        if inp == "n" or inp == "N":
             break
         else:
             if js['Type'] == "episode":
                 js_episode = js
                 js_series = get_api_data(parms_old)
-                write_to_db(inp, js_series['Title'], js_series['imdbID'])
-            else: write_to_db(inp, js['Title'], js['imdbID'])
+                year = re.findall('[0-9]+', js_series['Year'])[0]
+                write_to_db(inp, js_series['Title'], js_series['imdbID'], year)
+            else: write_to_db(inp, js['Title'], js['imdbID'], js['Year'])
 
-    inp = input("Enter:\n  b - go back\n  c - create new search\n")
+    inp = input("Enter:\n  b - go back\n  c - create new search\n  x - exit\n")
     while 1:
         if inp == "b" or inp == "B":
             return parms_old
         elif inp == "c" or inp == "C":
             return dict()
+        elif inp == "x" or inp == "X":
+            exit()
         else:
             inp = try_again()
 
 
-def write_to_db(names, title, imdbid):
+def write_to_db(names, title, movid, year):
 
-    conn = sqlite3.connect('BD_Project.sqlite')
-    cur = conn.cursor()
+    with sqlite3.connect('BD_Project.sqlite') as conn:
+        cur = conn.cursor()
 
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS Selected_Actors(
-            name VARCHAR(20), --Actors Name
-            title VARCHAR(50), --Title of content (e.g. "Star Trek: The Next Generation")
-            imdbid VARCHAR(20), --imdbID
-            character VARCHAR(20), --Name of played character
-            UNIQUE(name, title)); --Unique identifier to avoid duplicates
-        ''')
-
-    names = names.split(",")
-    for name in names:
-        cur.execute('''INSERT OR IGNORE INTO Selected_Actors
-            (name, title, imdbid)
-            VALUES ( ?, ?, ?)''',
-            (name.strip(",. "), title, imdbid) )
+        names = names.split(",")
+        for name in names:
+            name = name.strip(",.- ")
+            cur.execute('''INSERT INTO Movies ON DUPLICATE KEY UPDATE
+                (movid, title, year)
+                VALUES ( ?, ?, ?)''',
+                (movid, title, year))
+            cur.execute('''INSERT OR IGNORE INTO Selected
+                (movid, actname)
+                VALUES ( ?)''',
+                (movid, name))
         conn.commit()
 
 def prompt_enter_episode(js, parms):
