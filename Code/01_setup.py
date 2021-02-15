@@ -1,5 +1,5 @@
+import os
 par_path = os.path.dirname(os.path.realpath(__file__))
-
 sql_path = par_path + "\\data\\BD_Project.sqlite"
 
 def setup_pckges(packages):
@@ -10,17 +10,25 @@ def setup_pckges(packages):
 
     for package in packages:
         if isinstance(package, list):
-            try:
-                __import__(package[0])
-                print("Successfully imported", package[0])
-            except ModuleNotFoundError:
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', package[1]])
+            packname = package[0]
+            packimport = package[1]
         else:
+            packname = package
+            packimport = package
+
+        try:
             try:
-                __import__(package)
-                print("Successfully imported", package)
-            except ModuleNotFoundError:
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', packimport])
+            except:
+                try:
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', '--user', packimport])
+                except:
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', packimport])
+            __import__(packname)
+            print("Successfully imported", packname, "\n\n")
+        except:
+            print("Failed to import", packname, "\n\n")
+
 
 def setup_database():
     import sqlite3
@@ -74,6 +82,7 @@ def setup_database():
                 movid TEXT, --imdB ID of that movie/series
                 actid TEXT,
                 actname TEXT,
+                chargender TEXT,
                 FOREIGN KEY(movid) REFERENCES Movies(movid),
                 FOREIGN KEY(actid) REFERENCES Actors(actid),
                 UNIQUE(movid, actname));
@@ -155,7 +164,7 @@ if __name__ == "__main__":
     inp = input("The following Code will install needed packages by using the pip command.\nProceed? (y/n)\n").strip(",.- ")
     while 1:
         if inp == "y" or inp == "Y":
-            needed_packages = ['wheel', 'requests', 'urllib', 'ssl', 'json', 're', ['sqlite3', 'pysqlite'], 'concurrent.futures', 'multiprocessing', 'threading', 'joblib', 'os', 'math', 'datetime', 'time', 'numpy', 'pandas', 'plotly', 'dash', ['progressbar', 'progressbar2']]
+            needed_packages = ['wheel', 'requests', 'joblib', 'datetime', 'pandas', 'plotly', 'dash', ['progressbar', 'progressbar2'], 'numpy']
             setup_pckges(needed_packages)
             break
         elif inp == "n" or inp == "N":
