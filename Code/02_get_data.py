@@ -2,8 +2,6 @@ import sqlite3
 import pandas as pd
 import re
 import datetime
-import multiprocessing
-from threading import Thread
 from joblib import Parallel, delayed
 import os
 import math
@@ -90,7 +88,7 @@ def load_usa_names():
     cmds_seen = list()
     for commands in progressbar.progressbar(cmds_ls_n):
         for command in commands: #Laufzeitkomplexität hier schon mindestens quadratisch. Mit Aufnahme in Array weitaus schlechter
-            if command.get('nameid') not in cmds_seen: #Hier Laufzeitkomplexität linear, steigend mit Einträgen in cmds_seen
+            if command.get('nameid') not in cmds_seen: #Hier Laufzeitkomplexität linear, diesmal steigend mit Einträgen in cmds_seen
                 cmds_seen.append(command.get('nameid'))
                 cmds_n.append(command.copy())
     del cmds_ls_n
@@ -160,7 +158,6 @@ def load_imdb_register():
     if core_count <=2:
         df = read_tsv(i_path, i_name, ["nconst", "primaryName", "knownForTitles"], "tab")
     else:
-        p = multiprocessing.Pool()
         print("\nReading Data")
 
         columns = [["nconst"],["primaryName"],["knownForTitles"]]
