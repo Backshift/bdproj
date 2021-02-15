@@ -13,16 +13,14 @@ par_path = os.path.dirname(os.path.realpath(__file__))
 
 sql_path = par_path + "\\data\\BD_Project.sqlite"
 
-titles_predef = list()
-titles_predef = [("Leonard Nimoy,William Shatner,DeForest Kelley,Nichelle Nichols","Star Trek: The Original Series","tt0060028", 1966),
-                 ("Mark Hamill,Harrison Ford,Carrie Fisher,Billy Dee Williams,David Prowse","Star Wars: Episode V - The Empire Strikes Back","tt0080684",1980),
-                 ("Patrick Stewart,Jonathan Frakes,LeVar Burton,Marina Sirtis,Brent Spiner","Star Trek: The Next Generation", "tt0092455", 1987),
-                 ("Kate Mulgrew,Robert Beltran,Roxann Dawson,Robert Duncan McNeill,Jeri Ryan","Star Trek: Voyager", "tt0112178", 1995),
-                 ("Hugh Jackman,Patrick Stewart,Ian McKellen,Famke Janssen","X-Men", "tt0120903", 2000),
-                 ("Ewan McGregor,Natalie Portman,Hayden Christensen,Christopher Lee,Liam Neeson","Star Wars: Episode II - Attack of the Clones","tt0121765",2002),
-                 ("Richard Harris,Maggie Smith,Robbie Coltrane,Saunders Triplets,Daniel Radcliffe,Emma Watson,Rupert Grint,Tom Felton,Alan Rickman","Harry Potter and the Sorcerer's Stone","tt0241527",2001),
+
+titles_predef = [("Mark Hamill,Harrison Ford,Carrie Fisher","Star Wars: Episode V - The Empire Strikes Back","tt0080684",1980),
+                 ("Hayden Christensen","Star Wars: Episode II - Attack of the Clones","tt0121765",2002),
                  ("Adam Driver,Daisy Ridley","Star Wars: Episode VII - The Force Awakens","tt2488496",2015),
-                 ("Peter Dinklage,Lena Headey,Emilia Clarke,Kit Harington,Maisie Williams,Sophie Turner,Nikolaj Coster-Waldau,Gwendoline Christie,Isaac Hempstead Wright,Iain Glen,Alfie Allen,John Bradley,Liam Cunningham,Jason Momoa,Natalie Dormer,Jack Gleeson,Kristofer Hivju,Rose Leslie,Iwan Rheon,Charles Dance,Kristian Nairn,Sean Bean","Game of Thrones","tt0944947",2011)]
+                 ("Patrick Stewart","Star Trek: The Next Generation", "tt0092455", 1987),
+                 ("Emma Watson,Tom Felton,Alan Rickman","Harry Potter and the Prisoner of Azkaban","tt0304141",2004),
+                 ("Peter Dinklage,Emilia Clarke,Maisie Williams","Game of Thrones","tt0944947",2011),
+                 ("Jeri Ryan", "Star Trek: Voyager", "tt0112178", 1995)]
 
 def get_search_type():
     parms = dict()
@@ -287,15 +285,15 @@ def write_to_db(names, title, movid, year):
 
         names = names.split(",")
         for name in names:
-            name = name.strip(",.- ")
+            name = name.strip(",. ")
+
             cur.execute('''INSERT INTO Movies
-                (movid, title, year)
-                VALUES ( ?, ?, ?) ON CONFLICT (movid) DO UPDATE SET title = ?, year = ?''',
-                (movid, title, year, title, year))
+                            (movid, title, year) VALUES ( ?, ?, ?)
+                            ON CONFLICT (movid) DO UPDATE SET title = ?, year = ?''',
+                            (movid, title, year, title, year))
             cur.execute('''INSERT OR REPLACE INTO Selected
-                (movid, actname)
-                VALUES ( ?, ?)''',
-                (movid, name))
+                            (movid, actname) VALUES ( ?, ?)''',
+                            (movid, name))
         conn.commit()
 
 def prompt_enter_episode(js, parms):
@@ -341,53 +339,56 @@ def prompt_enter_episode(js, parms):
             continue
 
 '''XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'''
-for title in titles_predef:
-    write_to_db(title[0],title[1],title[2],title[3])
-nav_flag = False
-parms_old = dict()
-parms = dict()
-js = dict()
-js['Response'] = True
-while 1:
-    if (((parms == dict()) or (parms.get('i') != None) or (parms.get('t') != None)) and js.get('Response') == True):
-        parms_old = dict(parms)
-        parms = get_search_type()
-        if type(parms) is int:
-            if parms == -1:
-                break
+if __name__ == "__main__":
+    for title in titles_predef:
+        write_to_db(title[0],title[1],title[2],title[3])
 
-    time.sleep(2)
-    js_old = dict(js)
-    js = get_api_data(parms)
 
-    check = display_api_data(js,parms)
-    if check != True:
-        parms = dict()
-        js['Response'] = True
-        continue
+    nav_flag = False
+    parms_old = dict()
+    parms = dict()
+    js = dict()
+    js['Response'] = True
+    while 1:
+        if (((parms == dict()) or (parms.get('i') != None) or (parms.get('t') != None)) and js.get('Response') == True):
+            parms_old = dict(parms)
+            parms = get_search_type()
+            if type(parms) is int:
+                if parms == -1:
+                    break
 
-    if (parms.get('s') != None) and (js.get('Response') == True):
-        parms_old = dict(parms)
-        parms = nav_api_search(js,parms)
-        js = dict()
-        continue
+        time.sleep(2)
+        js_old = dict(js)
+        js = get_api_data(parms)
 
-    if ((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Type') == "series") and (js.get('Response') == True):
-        parms_old = dict(parms)
-        parms = prompt_enter_episode(js,parms)
+        check = display_api_data(js,parms)
+        if check != True:
+            parms = dict()
+            js['Response'] = True
+            continue
 
-        if parms != parms_old:
+        if (parms.get('s') != None) and (js.get('Response') == True):
+            parms_old = dict(parms)
+            parms = nav_api_search(js,parms)
             js = dict()
             continue
 
-    if (((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Response') == True)):
-        if js_old.get('Type') == 'series' and js.get('Type') == 'episode' and parms == parms_old:
-            js['imdbID'] = js_old.get('imdbID')
-        parms_old = dict(parms)
-        parms = prompt_save_title(js,parms,parms_old)
-        if type(parms) is int:
-            if parms == -1:
-                break
-        if parms != parms_old:
-            js = dict()
-            js['Response'] = True
+        if ((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Type') == "series") and (js.get('Response') == True):
+            parms_old = dict(parms)
+            parms = prompt_enter_episode(js,parms)
+
+            if parms != parms_old:
+                js = dict()
+                continue
+
+        if (((parms.get('i') != None) or (parms.get('t') != None)) and (js.get('Response') == True)):
+            if js_old.get('Type') == 'series' and js.get('Type') == 'episode' and parms == parms_old:
+                js['imdbID'] = js_old.get('imdbID')
+            parms_old = dict(parms)
+            parms = prompt_save_title(js,parms,parms_old)
+            if type(parms) is int:
+                if parms == -1:
+                    break
+            if parms != parms_old:
+                js = dict()
+                js['Response'] = True
