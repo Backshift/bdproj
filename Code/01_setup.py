@@ -2,6 +2,7 @@ import os
 par_path = os.path.dirname(os.path.realpath(__file__))
 sql_path = par_path + "\\data\\BD_Project.sqlite"
 
+
 def setup_pckges(packages):
     import subprocess
     import sys
@@ -28,7 +29,6 @@ def setup_pckges(packages):
             print("Successfully imported", packname, "\n\n")
         except:
             print("Failed to import", packname, "\n\n")
-
 
 def setup_database():
     import sqlite3
@@ -153,12 +153,6 @@ def download_files(files):
                     z.extractall(filepath)
                 bar.update(int(2), force=True)
         i+=1
-
-
-
-
-
-
 
 if __name__ == "__main__":
     inp = input("The following Code will install needed packages by using the pip command.\nProceed? (y/n)\n").strip(",.- ")

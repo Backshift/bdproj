@@ -236,4 +236,3 @@ def interact_with_db():
 if __name__ == '__main__':
     load_usa_names()
     load_imdb_register()
-    #interact_with_db()

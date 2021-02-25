@@ -77,8 +77,6 @@ def get_search_type():
 
     return parms
 
-
-
 def get_api_data(parms):
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -100,8 +98,6 @@ def get_api_data(parms):
         print("Failed to retrieve Information. See below.")
         print(data, "\n")
         return js
-
-
 
 def display_api_data(js,parms):
     if (parms.get('s')!= None) and (js.get('Response') == True):
@@ -140,7 +136,6 @@ def display_api_data(js,parms):
         print(js)
         print("\nExiting...")
         return False
-
 
 def nav_api_search(js, parms):
     display_page(js, parms)
@@ -277,7 +272,6 @@ def prompt_save_title(js, parms, parms_old):
             return -1
         else:
             inp = try_again()
-
 
 def write_to_db(names, title, movid, year):
     with sqlite3.connect(sql_path) as conn:

@@ -81,8 +81,6 @@ def get_sel_data():
             res_ids4api.extend(sorted(ids)) #Sorted to minimise API calls (lower actids have been found to relate to more popular actors)
         return res_ids4api
 
-######################################################################################################################################################
-
 def load_api_data():
     p = par_path + "\\data\\imdb_api_data\\"
     if not os.path.exists(p):
@@ -170,7 +168,6 @@ def load_api_data():
                 conn.commit()
             ids_old = ids.copy()
             ids = get_sel_data()
-
 
 def get_imdb_api_data(id,p):
     time.sleep(0.2)

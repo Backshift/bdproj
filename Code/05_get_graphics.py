@@ -57,7 +57,10 @@ def get_selected_names():
 
             filtered_names.extend(nameid)
 
-        filtered_names = list(set(filtered_names))
+        if len(filtered_names)>0:
+            filtered_names = list(set(filtered_names))
+        else:
+            exit()
 
     updatemenu = [{'buttons': [ #Anakin, Arya, Daenerys, Draco, Han, Hermione, Jeanluc, Kylo, Leia, Luke, Rey, Seven, Tiberius, Tyrion
                                 {'method': 'update',
@@ -91,7 +94,6 @@ def get_selected_names():
 
     return filtered_names, updatemenu
 
-
 def get_class_names():
 
     names =  ['BarbaraF', 'ChristianM', 'DanielM', 'DennisM', 'EmilM', 'FlorianM', 'GloriaF', 'KarolinF', 'KurtM', 'LindaF', 'LukeM', 'MarcM', 'MarkusM', 'MatthiasM', 'PatriciaF', 'PaulM', 'PhilippM', 'SandraF', 'SergejM', 'TimoM', 'TobiasM', 'WolfgangM']
@@ -117,7 +119,6 @@ def get_class_names():
                     'bordercolor': 'rgba(255,255,255,0.2)'}]
 
     return names, updatemenu
-
 
 def to_df(filtered_names):
     with sqlite3.connect(sql_path) as conn:
@@ -159,7 +160,7 @@ def to_df(filtered_names):
 
     return df
 
-def gen_fig(df, type="", colours=['#ff0000', '#e66ee6', '#6A76FC', 'DarkSeaGreen', '#b300ff', 'SteelBlue', '#d90000', '#ff4646', '#00b7ff', '#0cbb06', '#ffc800', 'ForestGreen', 'LightGray', '#c69e02', 'PaleGoldenRod', '#B68E00', '#C9FBE5', '#FF0092', '#22FFA7', '#E3EE9E', '#86CE00', '#BC7196', '#7E7DCD', '#FC6955', '#E48F72']):
+def gen_fig(df, type="", colours=['#00b7ff', '#e66ee6', '#6A76FC', 'DarkSeaGreen', 'Orange', 'OrangeRed', '#d90000', '#ff4646', '#00b7ff', '#0cbb06', '#ffc800', 'ForestGreen', 'Gray', '#c69e02', 'PaleGoldenRod', '#B68E00', '#C9FBE5', '#FF0092', '#22FFA7', '#E3EE9E', '#86CE00', '#BC7196', '#7E7DCD', '#FC6955', '#E48F72']):
     if type == 'trace':
         fig = px.line(
                 data_frame=df,
@@ -201,7 +202,7 @@ def print_trace_graphics(fig, markers=list(), range=dict(), title="", slider=Fal
         ),
         hoverlabel = dict(
             bgcolor = '#000000',
-            #bordercolor = '#000000',
+            #bordercolor = 'rgba(0,0,0,0)',
             font = dict(
             size = 12
             )
@@ -229,9 +230,14 @@ def print_trace_graphics(fig, markers=list(), range=dict(), title="", slider=Fal
                 range = [range.get('low', min(fig.data[0].x))-0.5, range.get('high', max(fig.data[0].x))+0.5]
         ))
 
-
     if title != "":
-        fig.update_layout(title=title)
+        fig.update_layout( title={
+                            'text': title,
+                            'y':1,
+                            'x':0.5,
+                            'xanchor': 'center',
+                            'yanchor': 'top'},
+                            title_font_size=25)
 
     if slider:
         if height != '500px':
@@ -242,7 +248,7 @@ def print_trace_graphics(fig, markers=list(), range=dict(), title="", slider=Fal
         fig.update_layout(
             xaxis=dict(
                 rangeslider=dict(
-                    bgcolor = 'rgba(255,255,255,0.2)',
+                    bgcolor = '#101010',
                     visible=True,
                     yaxis = dict(
                         rangemode = 'match'
@@ -254,21 +260,20 @@ def print_trace_graphics(fig, markers=list(), range=dict(), title="", slider=Fal
     for marker in markers:
         fig.add_vline(x=marker, line_width=2, line_color="yellow", opacity = 0.7)
 
-    fig.write_html(file=(par_path+"\\data\\"+filename+".html"), include_plotlyjs='cdn', full_html=False)
+    fig.write_html(file=(par_path+"\\data\\"+filename+".html"), include_plotlyjs='cdn', full_html=False, default_height=height)
     fig.write_html(file=("C:\\xampp\\htdocs\\graphs\\"+filename+".html"), include_plotlyjs='cdn', full_html=False, default_height=height)
-    #fig.show()
 
-
+################################################################################################################################################################
 
 if __name__ == '__main__':
     names, updatemenu = get_selected_names()
     df = to_df(names)
     fig = gen_fig(df, type='trace')
-    print_trace_graphics(fig, title='Namensgebung nach fiktionalen Charakteren in den USA', slider=True, updatemenu=updatemenu, filename='00_Movienames_gesamt', height='800px')
+    print_trace_graphics(fig, title='Namensgebung nach fiktiven Charakteren in den USA', slider=True, updatemenu=updatemenu, filename='00_Movienames_gesamt', height='800px')
 
     names, updatemenu = get_class_names()
     df = to_df(names)
-    fig = gen_fig(df, type='trace', colours=['#ff0000', '#e66ee6', '#6A76FC', 'DarkSeaGreen', '#b300ff', 'SteelBlue', '#d90000', '#ff4646', '#00b7ff', '#ffc800', '#0cbb06', 'ForestGreen', 'LightGray', 'Orange', 'PaleGoldenRod', 'Orange', '#C9FBE5', '#FF0092', '#22FFA7', '#E3EE9E', '#86CE00', '#BC7196', '#7E7DCD', '#FC6955', '#E48F72'])
+    fig = gen_fig(df, type='trace', colours=['#ff0000', '#e66ee6', '#6A76FC', 'DarkSeaGreen', '#b300ff', 'OrangeRed', '#d90000', '#ff4646', '#00b7ff', '#ffc800', '#0cbb06', 'ForestGreen', 'Gray', 'Orange', 'PaleGoldenRod', 'Orange', '#C9FBE5', '#FF0092', '#22FFA7', '#E3EE9E', '#86CE00', '#BC7196', '#7E7DCD', '#FC6955', '#E48F72'])
     print_trace_graphics(fig, title='Schlag den Luke', slider=True, updatemenu=updatemenu, filename='01_Bekannter_Als_Luke', height='800px')
 
 
@@ -281,7 +286,7 @@ if __name__ == '__main__':
     print_trace_graphics(fig, range=dict(low=1970), markers=[1977, 2016], filename="Leia")
 
     df = to_df(['AnakinM', 'DracoM', 'HermioneF', 'SeverusM'])
-    fig = gen_fig(df, type='trace', colours=['#ff0000', 'DarkSeaGreen', 'SteelBlue', 'LightGray'])
+    fig = gen_fig(df, type='trace', colours=['#00b7ff', 'DarkSeaGreen', 'OrangeRed', 'Gray'])
     print_trace_graphics(fig, range=dict(low=1990), filename="AnDrHeSe")
 
     df = to_df(['AryaF'])
@@ -293,5 +298,5 @@ if __name__ == '__main__':
     print_trace_graphics(fig, range=dict(low=2000), markers=[2011], filename='DaenTyr')
 
     df = to_df(['AnakinM', 'HermioneF'])
-    fig = gen_fig(df, type='vbar', colours=['#ff0000', 'SteelBlue'])
+    fig = gen_fig(df, type='vbar', colours=['#00b7ff', 'OrangeRed'])
     print_trace_graphics(fig, range=dict(low=2001, high=2006), filename='AnHerBalken', mode='vbar')
